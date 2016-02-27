@@ -27,15 +27,6 @@ void error(const char *errformat, ...) {
         printf("\n");
         va_end(args);
     }
-}
-
-void error_exit(int n_vectors_to_free, ...) {
-
-    va_list valist;
-    va_start(args, n_vectors_to_free);
-    for (int i = 0; i< n_vectors_to_free; i++){
-        vector_free(va_arg(valist, CharVector*));
-    }
     fprintf(stdout, "[error]");
     exit(0);
 }
