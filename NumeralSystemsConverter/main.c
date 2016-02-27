@@ -49,7 +49,12 @@ char letter_to_dec(char letter) {
 }
 
 char dec_to_letter(char dec) {
-
+    if (dec > 36 || dec < 0) // 36 = 26 english letters + 10 digits
+      error("decimal %d can't be converted to letter", dec);
+    if (dec < 10)
+        return (char)'0' + dec;
+    else
+        return (char)'a' + dec - (char)10;
 }
 
 typedef struct {
@@ -63,6 +68,12 @@ void vector_init(CharVector *vector) {
     vector->size = 0;
     vector->capacity = initial_capacity;
     vector->data = emalloc(sizeof((*vector->data)) * vector->capacity, "CharVector initial malloc failed");
+}
+
+CharVector vector_construct() {
+    CharVector chv;
+    vector_init(&chv);
+    return chv;
 }
 
 void vector_check_and_extend(CharVector *vector) {
@@ -82,10 +93,16 @@ char vector_append(CharVector *vector, char value) {
     return value;
 }
 
-// str must be null-terminated, e.g. cre15\0. Each latin letter is interpreted as a digit.
+// english letter is represented as a digit
+CharVector vector_from_char(char c) {
+    CharVector v = vector_construct();
+    vector_append(&v, letter_to_dec(c));
+    return v;
+}
+
+// str is usual c string, it must be null-terminated, e.g. cre15\0. Each english letter is interpreted as a digit.
 CharVector vector_from_str(const char *str) {
-    CharVector v;
-    vector_init(&v);
+    CharVector v = vector_construct();
     while (*str) {
       vector_append(&v, letter_to_dec(*str));
       str++;
@@ -113,6 +130,19 @@ char vector_set(CharVector *vector, size_t index, char value) {
     return value;
 }
 
+void swap_chars(char *c1, char*c2) {
+    char tmp = *c1; *c1 = *c2; *c2 = tmp;
+}
+
+// in-place reverse of the vector
+void vector_reverse(CharVector* vector) {
+    char* start = vector->data;
+    char* end = vector->data + vector->size - 1;
+    printf("%d\n", end);
+    for (size_t i = 0; i < vector->size / 2; i++)
+        swap_chars(start++, end--);
+}
+
 void vector_free(CharVector *vector) {
     free(vector->data);
     vector->data = NULL;
@@ -125,16 +155,18 @@ void vector_print(CharVector *vector) {
     printf("\n");
 }
 
+CharVector convert(CharVector src, char src_base, char dst_base) {
+    
+}
+
 int main() {
-    CharVector chv;
-    vector_init(&chv);
-    char i;
-    for (i = 100; i > 50; i--) {
-        vector_append(&chv, i);
-    }
-    vector_set(&chv, 101, 24);
-//    vector_print(&chv);
+    CharVector chv = vector_from_str("abc5def9yy");
+    vector_print(&chv);
+    vector_reverse(&chv);
+    swap_chars(chv.data, chv.data + 1);
+    vector_print(&chv);
     vector_free(&chv);
+    printf("%d\n", letter_to_dec('h'));
     printf("Hello, World!\n");
     return 0;
 }
