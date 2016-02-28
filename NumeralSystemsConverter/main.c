@@ -4,8 +4,32 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <stdbool.h>
 
-int silent = 1;
+// vector of chars interface
+typedef struct {
+    size_t size;  // actual size
+    size_t capacity;  // allocated slots
+    char *data;
+} CharVector;
+
+CharVector vector_from_str(const char *str);
+CharVector vector_from_char(char c);
+char vector_append(CharVector *vector, char value);
+CharVector vector_construct();
+char vector_get(const CharVector *vector, size_t index);
+char vector_set(CharVector *vector, size_t index, char value);
+void vector_reverse(CharVector* vector);
+void vector_free(CharVector *vector);
+void vector_print(CharVector *vector);
+void vector_print_letters(CharVector *vector);
+void vector_init(CharVector *vector);
+
+// put it here so we can easily free them on any error
+CharVector src_chv = vector_construct();
+CharVector res_chv = vector_construct();
+
+bool silent = 1; // turns off meaningful errors
 
 void log_error(const char *errformat, ...) {
     if (!silent) {
@@ -79,12 +103,6 @@ char dec_to_letter(char dec) {
     else
         return (char)'a' + dec - (char)10;
 }
-
-typedef struct {
-    size_t size;  // actual size
-    size_t capacity;  // allocated slots
-    char *data;
-} CharVector;
 
 void vector_init(CharVector *vector) {
     const size_t initial_capacity = 4;
@@ -175,13 +193,13 @@ void vector_free(CharVector *vector) {
 
 void vector_print(CharVector *vector) {
     for (size_t i = 0; i < vector->size; i++)
-        printf("%d ", vector->data[i]);
+        printf("%d ", vector_get(vector, i));
     printf("\n");
 }
 
 void vector_print_letters(CharVector *vector) {
     for (size_t i = 0; i < vector->size; i++)
-        printf("%c", dec_to_letter(vector->data[i]));
+        printf("%c", dec_to_letter(vector_get(vector, i)));
 }
 
 unsigned long long chv_to_number(CharVector* chv, char base) {
@@ -192,7 +210,7 @@ unsigned long long chv_to_number(CharVector* chv, char base) {
       return chv->data[0];
   res = chv->data[0];
   for (size_t i = 1; i < chv->size; i++)
-      res = ull_safe_add(ull_safe_mul(base, res), chv->data[i]);
+      res = ull_safe_add(ull_safe_mul(base, res), vector_get(chv, i));
   return res;
 }
 
