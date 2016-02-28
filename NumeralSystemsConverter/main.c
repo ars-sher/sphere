@@ -25,7 +25,14 @@ void vector_print(CharVector *vector);
 void vector_print_letters(CharVector *vector);
 void vector_init(CharVector *vector);
 
-bool silent = 0; // turns off meaningful errors
+bool silent = false; // turns off meaningful errors
+CharVector src_number_chv;
+CharVector res_chv;
+
+void cleanup() {
+    vector_free(&src_number_chv);
+    vector_free(&res_chv);
+}
 
 void log_error(const char *errformat, ...) {
     if (!silent) {
@@ -48,6 +55,7 @@ void error(const char *errformat, ...) {
         va_end(args);
     }
     fprintf(stdout, "[error]");
+    cleanup();
     exit(0);
 }
 
@@ -65,6 +73,7 @@ void *erealloc(void* ptr, size_t size, const char *errstr) {
     if (v == NULL) {
         log_error(errstr);
         error("realloc failed while allocating %d bytes", size);
+        free(ptr);
     }
     return v;
 }
@@ -211,7 +220,7 @@ unsigned long long chv_to_number(CharVector* chv, char base) {
 }
 
 CharVector number_to_chv(unsigned long long number, char base) {
-    CharVector res_chv = vector_construct();
+    res_chv = vector_construct();
     char remainder = base;
     while (number >= base) {
         remainder = number % base;
@@ -255,7 +264,7 @@ CharVector parse_args(int argc, char *argv[], char* psrc_base, char* pdst_base) 
     *pdst_base = stolerrcheck(argv[2]);
     if (!(2 <= *pdst_base && *pdst_base < *psrc_base && *psrc_base <= 36))
         error("Bases must be: 2 <= dst_base < src_base <= 36");
-    CharVector src_number_chv = vector_construct();
+    src_number_chv = vector_construct();
     char* number_str = argv[3];
     while (*number_str ) {
         char dec = letter_to_dec(*number_str);
@@ -280,7 +289,7 @@ CharVector read_args(char* psrc_base, char* pdst_base) {
     *psrc_base = (char) src_base;
     *pdst_base = (char) dst_base;
     char c;
-    CharVector src_number_chv = vector_construct();
+    src_number_chv = vector_construct();
     while ((c = getchar()) != EOF && isspace(c));
     ungetc(c, stdin);
     while ((c = getchar()) != EOF) {
@@ -299,10 +308,9 @@ CharVector read_args(char* psrc_base, char* pdst_base) {
 int main(int argc, char *argv[]) {
     char src_base; char dst_base;
 //    CharVector src_number_chv = parse_args(argc, argv, &src_base, &dst_base);
-    CharVector src_number_chv = read_args(&src_base, &dst_base);
-    CharVector res_chv = convert(&src_number_chv, src_base, dst_base);
+    src_number_chv = read_args(&src_base, &dst_base);
+    res_chv = convert(&src_number_chv, src_base, dst_base);
     vector_print_letters(&res_chv);
-    vector_free(&src_number_chv);
-    vector_free(&res_chv);
+    cleanup();
     return 0;
 }
