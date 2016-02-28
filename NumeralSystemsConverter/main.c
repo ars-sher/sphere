@@ -25,7 +25,7 @@ void vector_print(CharVector *vector);
 void vector_print_letters(CharVector *vector);
 void vector_init(CharVector *vector);
 
-bool silent = false; // turns off meaningful errors
+bool silent = true; // turns off meaningful errors
 CharVector src_number_chv;
 CharVector res_chv;
 
