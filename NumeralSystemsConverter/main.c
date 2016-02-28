@@ -25,11 +25,7 @@ void vector_print(CharVector *vector);
 void vector_print_letters(CharVector *vector);
 void vector_init(CharVector *vector);
 
-// put it here so we can easily free them on any error
-CharVector src_chv = vector_construct();
-CharVector res_chv = vector_construct();
-
-bool silent = 1; // turns off meaningful errors
+bool silent = 0; // turns off meaningful errors
 
 void log_error(const char *errformat, ...) {
     if (!silent) {
@@ -235,8 +231,10 @@ CharVector convert(CharVector* src, char src_base, char dst_base) {
     return number_to_chv(src_number, dst_base);
 }
 
-void show_usage() {
-    printf("Usage: main <src_base> <dst_base> <number>\n");
+void show_usage_parse_arg() {
+    printf("argc-argv usage: main <src_base> <dst_base> <number>\n");
+    printf("Correct example, with args from stdin:\n");
+    printf("  gcc -O2 -Werror -std=c99 main.c -o main && echo -n \"10 2 42\" | ./main \n");
 }
 
 long stolerrcheck(char* str) {
@@ -250,7 +248,7 @@ long stolerrcheck(char* str) {
 // we would need that in case of passing args to executable
 CharVector parse_args(int argc, char *argv[], char* psrc_base, char* pdst_base) {
     if (argc != 4) {
-        show_usage();
+        show_usage_parse_arg();
         error("Number of arguments %d is not equal 4", argc);
     }
     *psrc_base = stolerrcheck(argv[1]);
