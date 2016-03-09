@@ -25,9 +25,9 @@ void vector_print(CharVector *vector);
 void vector_print_letters(CharVector *vector);
 void vector_init(CharVector *vector);
 
-bool silent = true; // turns off meaningful errors
-CharVector src_number_chv;
-CharVector res_chv;
+static bool silent = true; // turns off meaningful errors
+static CharVector src_number_chv;
+static CharVector res_chv;
 
 void cleanup() {
     vector_free(&src_number_chv);

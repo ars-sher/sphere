@@ -1,0 +1,17 @@
+program:
+  end
+  expression end
+
+expression:
+  expression + term
+  term
+
+term:
+  number * term
+  term * number
+  primary
+
+primary:
+  "name"
+  (expression)
+  
