@@ -7,7 +7,7 @@
 #include <string.h>
 
 //errors functions interface
-static bool silent = false; // turns off meaningful errors
+static bool silent = true; // turns off meaningful errors
 void log_error(const char *errformat, ...);
 void error(const char *errformat, ...);
 void cleanup(); // free all allocated memory
@@ -34,7 +34,7 @@ void vector_print_chars(const CharVector *vector);
 
 // stack of CharVector's interfacce
 struct StackElement {
-    CharVector *data;
+    CharVector data;
     struct StackElement *next;
 };
 typedef struct StackElement StackElement;
@@ -45,8 +45,8 @@ typedef struct {
 } Stack;
 
 bool stack_is_empty(Stack *sp);
-CharVector* stack_pop(Stack *sp);
-void stack_push(Stack *sp, CharVector* el);
+CharVector stack_pop(Stack *sp);
+void stack_push(Stack *sp, CharVector el);
 Stack stack_construct();
 // end of stack interface
 
@@ -75,17 +75,21 @@ bool stack_is_empty(Stack *sp) {
     return (sp->size == 0);
 }
 
-CharVector* stack_pop(Stack *sp) {
+CharVector stack_pop(Stack *sp) {
     if (stack_is_empty(sp))
         error("an attempt to pop from empty stack");
     StackElement *tmp = sp->top;
-    CharVector *popped = tmp->data;
+    CharVector popped = tmp->data;
     sp->top = sp->top->next;
     free(tmp);
+    sp->size--;
     return popped;
 }
 
-void stack_push(Stack *sp, CharVector* el) {
+void stack_push(Stack *sp, CharVector el) {
+//    printf("Adding following string to stack:\n");
+//    vector_print_chars(&el);
+//    printf("\n");
     StackElement *new_elp = (StackElement*) emalloc(sizeof(StackElement), "memory allocation for stack element failed");
     new_elp->data = el;
     new_elp->next = sp->top;
@@ -238,8 +242,10 @@ void error(const char *errformat, ...) {
 }
 
 void cleanup() {
+//    printf("stack size is %d, starting cleanup\n", pvectors_to_free.size);
     while (!stack_is_empty(&pvectors_to_free)) {
-        vector_free(stack_pop(&pvectors_to_free));
+        CharVector popped = stack_pop(&pvectors_to_free);
+        vector_free(&popped);
     }
 }
 
@@ -304,8 +310,9 @@ LexToken get_token() {
             if (!isInString) {
                 ungetc(c, stdin);
                 int number;
-                if (scanf("%d", &number) != 1) // TODO: number = -1 on overflow
-                    error("scanf result is not 1");
+                int res = scanf("%d", &number);
+                if (res != 1 || number == -1) // number = -1 on overflow
+                    error("scanf result is not 1 or number is -1");
                 LexToken lt = {NUMBER, EMPTY_CHV, number};
                 return lt;
             }
@@ -319,10 +326,7 @@ LexToken get_token() {
             return lt;
         }
     }
-    // TODO call error
-    LexToken lt = default_token();
-    lt.tk = BROKEN;
-    return lt;
+    error("bad token");
 }
 
 CharVector expression(LexToken *curr_tok_ptr);
@@ -334,6 +338,7 @@ CharVector primary(LexToken *curr_tok_ptr) {
       *curr_tok_ptr = get_token();
       if (curr_tok_ptr->tk == QUOTES) { // empty string
           res = vector_construct();
+          stack_push(&pvectors_to_free, res);
       }
       else {
 //      print_lex_token(*curr_tok_ptr);
@@ -341,6 +346,7 @@ CharVector primary(LexToken *curr_tok_ptr) {
               error("string after \" expected");
           }
           res = curr_tok_ptr->string;
+          stack_push(&pvectors_to_free, res);
           *curr_tok_ptr = get_token();
           if (curr_tok_ptr->tk != QUOTES) {
               error("\" after string expected");
@@ -384,6 +390,8 @@ CharVector term(LexToken *curr_tok_ptr) {
       *curr_tok_ptr = get_token();
   }
   CharVector res = vector_multiply(&prim, left_number*right_number);
+  stack_pop(&pvectors_to_free);
+  stack_push(&pvectors_to_free, res);
   vector_free(&prim);
   return res;
 }
@@ -395,6 +403,8 @@ CharVector expression(LexToken *curr_tok_ptr) {
             *curr_tok_ptr = get_token(); // eat +
             CharVector right = term(curr_tok_ptr);
             CharVector tmp = vector_concatenate(&left, &right);
+            stack_pop(&pvectors_to_free); stack_pop(&pvectors_to_free);
+            stack_push(&pvectors_to_free, tmp);
             vector_free(&left); vector_free(&right);
             left = tmp;
         }
@@ -409,10 +419,14 @@ int main() {
     LexToken lt = get_token();
     if (lt.tk != END) {
         res = expression(&lt);
+        if (lt.tk != END)
+            error("EOF expected");
         printf("\"");
         vector_print_chars(&res);
         printf("\"");
         vector_free(&res);
+        stack_pop(&pvectors_to_free);
     }
+    cleanup();
     return 0;
 }
