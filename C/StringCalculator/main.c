@@ -3,9 +3,14 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <stdarg.h>
-#include <limits.h>
 #include <stdbool.h>
 #include <string.h>
+
+//errors functions interface
+static bool silent = false; // turns off meaningful errors
+void log_error(const char *errformat, ...);
+void error(const char *errformat, ...);
+void cleanup(); // free all allocated memory
 
 // vector of chars interface
 typedef struct {
@@ -25,31 +30,27 @@ void vector_reverse(CharVector* vector);
 void vector_free(CharVector *vector);
 void vector_print(const CharVector *vector);
 void vector_print_chars(const CharVector *vector);
+// end of vector of chars interface
 
-static bool silent = true; // turns off meaningful errors
-void log_error(const char *errformat, ...) {
-    if (!silent) {
-        va_list args;
-        va_start(args, errformat);
-        printf("Error: ");
-        vprintf(errformat, args);
-        printf("\n");
-        va_end(args);
-    }
-}
-void error(const char *errformat, ...) {
-    if (!silent) {
-        va_list args;
-        va_start(args, errformat);
-        printf("Error: ");
-        vprintf(errformat, args);
-        printf("\n");
-        va_end(args);
-    }
-    fprintf(stdout, "[error]");
-    exit(0);
-}
+// stack of CharVector's interfacce
+struct StackElement {
+    CharVector *data;
+    struct StackElement *next;
+};
+typedef struct StackElement StackElement;
 
+typedef struct {
+    StackElement *top;
+    int size;
+} Stack;
+
+bool stack_is_empty(Stack *sp);
+CharVector* stack_pop(Stack *sp);
+void stack_push(Stack *sp, CharVector* el);
+Stack stack_construct();
+// end of stack interface
+
+// *alloc wrappers
 void *emalloc(size_t size, const char *errstr){
     void *v = malloc(size);
     if (v == NULL) {
@@ -68,6 +69,35 @@ void *erealloc(void* ptr, size_t size, const char *errstr) {
     }
     return v;
 }
+
+//*********************************** start of stack implementation
+bool stack_is_empty(Stack *sp) {
+    return (sp->size == 0);
+}
+
+CharVector* stack_pop(Stack *sp) {
+    if (stack_is_empty(sp))
+        error("an attempt to pop from empty stack");
+    StackElement *tmp = sp->top;
+    CharVector *popped = tmp->data;
+    sp->top = sp->top->next;
+    free(tmp);
+    return popped;
+}
+
+void stack_push(Stack *sp, CharVector* el) {
+    StackElement *new_elp = (StackElement*) emalloc(sizeof(StackElement), "memory allocation for stack element failed");
+    new_elp->data = el;
+    new_elp->next = sp->top;
+    sp->top = new_elp;
+    sp->size++;
+}
+
+Stack stack_construct() {
+    Stack res = {.top = NULL, .size = 0};
+    return res;
+}
+//*********************************** end of stack implementation
 
 //*********************************** start of vector implementation
 void vector_init(CharVector *vector) {
@@ -179,6 +209,41 @@ CharVector vector_multiply(const CharVector *v, int factor) {
 }
 //************************************ end of vector implementation
 
+
+// error functions implementation
+static Stack pvectors_to_free = {.top = NULL, .size = 0};
+void log_error(const char *errformat, ...) {
+    if (!silent) {
+        va_list args;
+        va_start(args, errformat);
+        printf("Error: ");
+        vprintf(errformat, args);
+        printf("\n");
+        va_end(args);
+    }
+}
+
+void error(const char *errformat, ...) {
+    if (!silent) {
+        va_list args;
+        va_start(args, errformat);
+        printf("Error: ");
+        vprintf(errformat, args);
+        printf("\n");
+        va_end(args);
+    }
+    fprintf(stdout, "[error]");
+    cleanup();
+    exit(0);
+}
+
+void cleanup() {
+    while (!stack_is_empty(&pvectors_to_free)) {
+        vector_free(stack_pop(&pvectors_to_free));
+    }
+}
+
+// contains pointers to vectors needed to be freed before exit
 typedef enum {
     STRING, NUMBER, END=EOF,
     PLUS='+', MUL='*',
